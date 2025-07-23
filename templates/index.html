@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Assistant</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #ece5dd;
+    }
+
+    .chat-container {
+      max-width: 600px;
+      margin: 0 auto;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #ccc;
+      background: #fff;
+    }
+
+    #chat-box {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message {
+      padding: 10px 14px;
+      margin: 5px;
+      max-width: 75%;
+      border-radius: 8px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      position: relative;
+    }
+
+    .user-message {
+      align-self: flex-end;
+      background-color: #dcf8c6;
+      border-bottom-right-radius: 0;
+    }
+
+    .bot-message {
+      align-self: flex-start;
+      background-color: #f1f0f0;
+      border-bottom-left-radius: 0;
+    }
+
+    .input-container {
+      display: flex;
+      padding: 10px;
+      background: #f0f0f0;
+    }
+
+    #user-input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      outline: none;
+    }
+
+    #send-btn {
+      margin-left: 10px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 50%;
+      background-color: #128c7e;
+      color: white;
+      cursor: pointer;
+    }
+
+    #send-btn:hover {
+      background-color: #075e54;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div id="chat-box"></div>
+
+    <div class="input-container">
+      <input id="user-input" type="text" placeholder="Type a message..." />
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      appendMessage(message, "user-message");
+      userInput.value = "";
+
+      // Step 1: show "Bot is thinking..."
+      const typingBubble = appendMessage("Jaanu is thinking...", "bot-message");
+
+      // Step 2: change to "Bot is typing..." after 1 second
+      setTimeout(() => {
+        typingBubble.textContent = "Jaanu is typing...";
+      }, 1000);
+
+      fetch("/api/chat/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCSRFToken(),
+        },
+        body: JSON.stringify({ message }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          chatBox.removeChild(typingBubble);
+          displayBotMessage(data.response || "Sorry, something went wrong.");
+        })
+        .catch(() => {
+          chatBox.removeChild(typingBubble);
+          displayBotMessage("Error reaching server.");
+        });
+    }
+
+    function appendMessage(text, className) {
+      const messageElement = document.createElement("div");
+      messageElement.classList.add("message", className);
+      messageElement.textContent = text;
+      chatBox.appendChild(messageElement);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return messageElement;
+    }
+
+    function displayBotMessage(message) {
+      const parts = message.split(/\s*(?=\d+\.\s)/); // split numbered points
+      parts.forEach((part, index) => {
+        if (part.trim()) {
+          setTimeout(() => {
+            const messageElement = document.createElement("div");
+            messageElement.classList.add("message", "bot-message");
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            typeText(messageElement, part.trim());
+          }, index * 1000);
+        }
+      });
+    }
+
+    function typeText(element, text, i = 0) {
+      if (i < text.length) {
+        element.innerHTML += text.charAt(i);
+        setTimeout(() => typeText(element, text, i + 1), 15);
+      }
+    }
+
+    function getCSRFToken() {
+      let name = "csrftoken";
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === name + "=") {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+  </script>
+</body>
+</html>

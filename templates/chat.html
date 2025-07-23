@@ -1,0 +1,42 @@
+<!-- templates/chatbot.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Chatbot</title>
+    <script>
+        async function sendMessage() {
+            const userInput = document.getElementById("user-input").value;
+            const chatBox = document.getElementById("chat-box");
+
+            chatBox.innerHTML += `<div><strong>You:</strong> ${userInput}</div>`;
+
+            const response = await fetch("/api/chat/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                },
+                body: JSON.stringify({ message: userInput })
+            });
+
+            const data = await response.json();
+            chatBox.innerHTML += `<div><strong>Bot:</strong> ${data.response}</div>`;
+            document.getElementById("user-input").value = "";
+        }
+
+        function getCSRFToken() {
+            return document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken'))
+                ?.split('=')[1];
+        }
+    </script>
+</head>
+<body>
+    <h1>AI Chatbot</h1>
+    <div id="chat-box" style="border:1px solid #ccc; padding:10px; width:400px; height:300px; overflow-y:scroll;"></div>
+    <br/>
+    <input type="text" id="user-input" placeholder="Type a message..." style="width:300px;" />
+    <button onclick="sendMessage()">Send</button>
+</body>
+</html>
